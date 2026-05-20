@@ -95,7 +95,13 @@ jobs:
           )
           if install not in text:
               raise SystemExit("Expected rwasm install call was not found")
-          path.write_text(text.replace(install, patch))
+          text = text.replace(install, patch)
+
+          old = 'rwasm::add_pkg(packages, repo_dir = repo_path, compress = compress)'
+          new = 'rwasm::add_pkg(packages, repo_dir = repo_path, remotes = NULL, compress = compress)'
+          if old not in text:
+              raise SystemExit("Expected rwasm::add_pkg() call was not found")
+          path.write_text(text.replace(old, new))
 
       - name: Retrieve webR package refs
         id: package_refs
