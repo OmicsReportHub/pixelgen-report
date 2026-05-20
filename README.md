@@ -55,8 +55,8 @@ compiled packages without reinstalling during that browser session.
 
 ## Package Manifests
 
-- `webr-packages/packages` is the default browser package set used by the
-  release workflow.
+- `webr-packages/packages` is the default browser package set plus its explicit
+  runtime dependency closure used by the release workflow.
 - `webr-packages/packages.pixi-full` records the R dependencies from the source
   Pixi feature for traceability. Some of those packages have native system
   dependencies and may not compile cleanly for webR without extra patching.
