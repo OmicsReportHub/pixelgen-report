@@ -18,6 +18,8 @@ cran::circlize
 cran::cli
 cran::clipr
 cran::clue
+cran::cluster
+cran::codetools
 cran::colorspace
 bioc::ComplexHeatmap
 cran::cpp11
