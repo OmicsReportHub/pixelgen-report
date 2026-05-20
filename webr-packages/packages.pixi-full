@@ -1,0 +1,51 @@
+# R dependencies recorded from:
+# /Volumes/ccrsf-static/illumina/RnD_pixelgen_CAR-T_datasets/pixi.toml
+#
+# This manifest is traceability-first. Some packages here have native system
+# dependencies or very large dependency closures, so use it for an intentional
+# full webR compile attempt rather than as the default release input.
+
+cran::IRkernel
+cran::remotes
+cran::pak
+cran::dplyr
+cran::tidyr
+cran::readr
+cran::ggplot2
+cran::yaml
+cran::jsonlite
+cran::here
+cran::knitr
+cran::rmarkdown
+cran::arrow
+cran::Seurat
+bioc::limma
+bioc::ComplexHeatmap
+cran::ggridges
+cran::harmony
+cran::pheatmap
+cran::cli
+cran::rlang
+cran::glue
+cran::hdf5r
+cran::SeuratObject
+cran::tibble
+cran::igraph
+cran::tidygraph
+cran::Matrix
+cran::stringr
+cran::patchwork
+cran::ggraph
+cran::plotly
+cran::fs
+cran::pbapply
+cran::lifecycle
+cran::R6
+cran::DBI
+cran::dbplyr
+cran::duckdb
+cran::bit64
+
+# Optional Pixi task installs this native R package from GitHub. It is not in
+# the default webR build until its WebAssembly compatibility is confirmed.
+# github::PixelgenTechnologies/pixelatorR@v0.17.1

@@ -1,0 +1,33 @@
+# Default browser-focused package set derived from the Pixelgen Pixi R feature.
+# Keep one rwasm package ref per line. The release workflow passes this file to
+# rwasm::add_pkg() and then builds a webR library bundle from the result.
+
+cran::dplyr
+cran::tidyr
+cran::readr
+cran::ggplot2
+cran::yaml
+cran::jsonlite
+cran::here
+cran::tibble
+cran::stringr
+cran::Matrix
+cran::ggridges
+cran::pheatmap
+cran::cli
+cran::rlang
+cran::glue
+cran::igraph
+cran::tidygraph
+cran::patchwork
+cran::ggraph
+cran::plotly
+cran::fs
+cran::pbapply
+cran::lifecycle
+cran::R6
+cran::DBI
+cran::dbplyr
+cran::bit64
+bioc::limma
+bioc::ComplexHeatmap

@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pixelgen R Browser Lab</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f4;
+      --panel: #ffffff;
+      --ink: #1f2528;
+      --muted: #5f6a70;
+      --line: #dce2df;
+      --accent: #126a72;
+      --accent-2: #8a4f1d;
+      --good: #1f7a4d;
+      --warn: #9a6418;
+      --bad: #a13d3d;
+      --code: #111719;
+      --code-ink: #eef6f6;
+      --shadow: 0 14px 40px rgba(31, 37, 40, 0.08);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    main {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+    }
+
+    aside {
+      border-right: 1px solid var(--line);
+      background: #eef3ef;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    section {
+      padding: 24px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.12;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      font-size: 32px;
+      max-width: 12ch;
+    }
+
+    h2 {
+      font-size: 18px;
+    }
+
+    h3 {
+      font-size: 15px;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      padding: 10px 11px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 180px;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      line-height: 1.45;
+      tab-size: 2;
+    }
+
+    button,
+    .file-button {
+      appearance: none;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      background: var(--accent);
+      color: white;
+      min-height: 38px;
+      padding: 9px 12px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    button.secondary,
+    .file-button {
+      background: #fff;
+      color: var(--accent);
+    }
+
+    button:disabled,
+    .file-button.disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .file-button input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      border: 0;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+    }
+
+    .brand {
+      display: grid;
+      gap: 10px;
+    }
+
+    .status {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 8px;
+    }
+
+    .status strong {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .status[data-tone="ok"] strong {
+      color: var(--good);
+    }
+
+    .status[data-tone="warn"] strong {
+      color: var(--warn);
+    }
+
+    .status[data-tone="bad"] strong {
+      color: var(--bad);
+    }
+
+    .controls {
+      display: grid;
+      gap: 14px;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-rows: auto minmax(300px, 1fr);
+      min-height: 100vh;
+      gap: 18px;
+    }
+
+    .editor-panel {
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      padding: 22px 24px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .editor-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .editor-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    #r-code {
+      min-height: 280px;
+      background: var(--code);
+      color: var(--code-ink);
+      border-color: #2b3a3d;
+    }
+
+    .outputs {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(300px, 1.05fr);
+      gap: 18px;
+      padding: 0 24px 24px;
+    }
+
+    .output-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      min-height: 280px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .output-head {
+      padding: 13px 15px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    pre {
+      margin: 0;
+      padding: 14px;
+      overflow: auto;
+      white-space: pre-wrap;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #253034;
+    }
+
+    #plots {
+      padding: 14px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+      overflow: auto;
+    }
+
+    #plots canvas {
+      width: 100%;
+      max-width: 820px;
+      height: auto;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 6px;
+    }
+
+    .package-list {
+      min-height: 128px;
+      font-size: 13px;
+    }
+
+    .small {
+      font-size: 12px;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 5px 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    @media (max-width: 980px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      aside {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .outputs {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <aside>
+      <div class="brand">
+        <h1>Pixelgen R Browser Lab</h1>
+        <p>Run webR, mount a compiled R library bundle, write R code, and capture plots in one local HTML file.</p>
+      </div>
+
+      <div id="status" class="status" data-tone="warn" role="status" aria-live="polite">
+        <strong>Idle</strong>
+        <p>Start webR before running code.</p>
+      </div>
+
+      <div class="controls">
+        <label>
+          webR runtime
+          <input id="runtime-url" value="https://webr.r-wasm.org/v0.5.9/">
+        </label>
+
+        <label>
+          Package repo
+          <input id="package-repo" placeholder="https://example.org/webr-packages/v0.1.0/">
+        </label>
+
+        <label>
+          Packages
+          <textarea id="packages" class="package-list">dplyr
+tidyr
+readr
+ggplot2
+yaml
+jsonlite
+tibble
+stringr
+Matrix
+limma
+ComplexHeatmap
+pheatmap
+igraph
+tidygraph
+ggraph
+patchwork
+plotly</textarea>
+        </label>
+
+        <div class="button-row">
+          <button id="start-r">Start R</button>
+          <button id="install-packages" class="secondary" disabled>Install/load packages</button>
+        </div>
+
+        <label class="file-button" id="bundle-label">
+          Mount bundle
+          <input id="bundle-files" type="file" accept=".zip,.data,.gz,.metadata,.json" multiple disabled>
+        </label>
+
+        <div class="pill-row" aria-label="Release files">
+          <span class="pill">webR v0.5.9</span>
+          <span class="pill">R packages only</span>
+          <span class="pill">canvas plots</span>
+        </div>
+
+        <p class="small">Use the release ZIP or the `.data.gz` plus `.js.metadata` pair built by the release workflow.</p>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <section class="editor-panel">
+        <div class="editor-head">
+          <div>
+            <h2>R code</h2>
+            <p>Output and plots are captured from the same webR session.</p>
+          </div>
+          <div class="editor-actions">
+            <button id="run-code" disabled>Run</button>
+            <button id="clear-output" class="secondary">Clear</button>
+          </div>
+        </div>
+        <textarea id="r-code" spellcheck="false">library(ggplot2)
+
+df <- data.frame(
+  marker = c("CD19", "CD20", "CD54", "FMC63"),
+  proximity = c(0.81, 0.73, 0.52, 0.67)
+)
+
+ggplot(df, aes(marker, proximity, fill = marker)) +
+  geom_col(width = 0.68, show.legend = FALSE) +
+  coord_cartesian(ylim = c(0, 1)) +
+  labs(x = NULL, y = "Example proximity score") +
+  theme_minimal(base_size = 14)</textarea>
+      </section>
+
+      <section class="outputs">
+        <div class="output-panel">
+          <div class="output-head">
+            <h3>Console</h3>
+            <span id="run-time" class="small"></span>
+          </div>
+          <pre id="console-output">Ready.</pre>
+        </div>
+
+        <div class="output-panel">
+          <div class="output-head">
+            <h3>Plots</h3>
+            <span class="small">Captured canvases</span>
+          </div>
+          <div id="plots"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script type="module">
+    const DEFAULT_WEBR_PACKAGE_REPO = "https://repo.r-wasm.org/";
+    const JSZIP_CDN = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
+    const PAKO_CDN = "https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js";
+
+    let webR = null;
+    let initialized = false;
+
+    const elements = {
+      status: document.getElementById("status"),
+      runtimeUrl: document.getElementById("runtime-url"),
+      packageRepo: document.getElementById("package-repo"),
+      packages: document.getElementById("packages"),
+      startR: document.getElementById("start-r"),
+      installPackages: document.getElementById("install-packages"),
+      bundleFiles: document.getElementById("bundle-files"),
+      bundleLabel: document.getElementById("bundle-label"),
+      runCode: document.getElementById("run-code"),
+      clearOutput: document.getElementById("clear-output"),
+      rCode: document.getElementById("r-code"),
+      consoleOutput: document.getElementById("console-output"),
+      plots: document.getElementById("plots"),
+      runTime: document.getElementById("run-time"),
+    };
+
+    elements.startR.addEventListener("click", () => guard(startWebR));
+    elements.installPackages.addEventListener("click", () => guard(installAndLoadPackages));
+    elements.bundleFiles.addEventListener("change", (event) => guard(() => mountBundle(event.target.files)));
+    elements.runCode.addEventListener("click", () => guard(runCode));
+    elements.clearOutput.addEventListener("click", clearOutputs);
+
+    async function startWebR() {
+      if (initialized) {
+        setStatus("Ready", "webR is already initialized.", "ok");
+        return;
+      }
+      setBusy(true);
+      const baseUrl = normalizeBaseUrl(elements.runtimeUrl.value || "https://webr.r-wasm.org/v0.5.9/");
+      setStatus("Starting", `Loading webR from ${baseUrl}`, "warn");
+      try {
+        const module = await import(`${baseUrl.replace(/\/$/, "")}/webr.mjs`);
+        webR = withFileOriginUrlFallback(() => new module.WebR({ baseUrl }));
+        await withFileOriginUrlFallback(() => webR.init());
+        initialized = true;
+        await setPackageRepos();
+        await evalR("options(device = function(...) webr::canvas(...))");
+        setStatus("Ready", "webR is initialized. Mount a bundle, install packages, or run base R code.", "ok");
+        elements.installPackages.disabled = false;
+        elements.bundleFiles.disabled = false;
+        elements.bundleLabel.classList.remove("disabled");
+        elements.runCode.disabled = false;
+      } catch (error) {
+        webR = null;
+        initialized = false;
+        setStatus("Startup failed", startupMessage(error), "bad");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function setPackageRepos() {
+      const repos = packageRepoEntries();
+      await evalR(`options(webr_pkg_repos = ${rNamedVector(repos)}, repos = ${rNamedVector(repos)})`);
+    }
+
+    async function installAndLoadPackages() {
+      await ensureWebR();
+      const packages = packageNames();
+      if (!packages.length) {
+        setStatus("No packages", "Add one package name per line before installing.", "warn");
+        return;
+      }
+      setBusy(true);
+      setStatus("Installing", `Installing/loading ${packages.join(", ")}`, "warn");
+      await setPackageRepos();
+      await evalR(`webr::install(${rCharacterVector(packages)}, repos = ${rNamedVector(packageRepoEntries())})`);
+      await loadPackages(packages);
+      setStatus("Packages ready", `Loaded ${packages.join(", ")}`, "ok");
+      setBusy(false);
+    }
+
+    async function mountBundle(files) {
+      await ensureWebR();
+      const selected = Array.from(files || []).filter(Boolean);
+      if (!selected.length) return;
+      setBusy(true);
+      setStatus("Mounting", "Reading webR library bundle.", "warn");
+      try {
+        const bundle = await readLibraryBundleFiles(selected);
+        const mountable = await prepareMountableLibraryBundle(bundle);
+        const mountpoint = `/pixelgen-r-library-${Date.now()}`;
+        await ensureDirectory(mountpoint);
+        await webR.FS.mount("WORKERFS", {
+          packages: [{
+            blob: mountable.blob,
+            metadata: mountable.metadata,
+          }],
+        }, mountpoint);
+        await evalR(`.libPaths(unique(c(${rString(mountpoint)}, .libPaths())))`);
+        const packages = packageNames();
+        if (packages.length) await loadPackages(packages);
+        setStatus("Bundle mounted", `Mounted ${bundle.label}.`, "ok");
+      } finally {
+        elements.bundleFiles.value = "";
+        setBusy(false);
+      }
+    }
+
+    async function runCode() {
+      await ensureWebR();
+      const code = elements.rCode.value.trim();
+      if (!code) return;
+      clearOutputs();
+      setBusy(true);
+      setStatus("Running", "Evaluating R code.", "warn");
+      const started = performance.now();
+      const shelter = await new webR.Shelter();
+      try {
+        const capture = await shelter.captureR(code, {
+          withAutoprint: true,
+          captureStreams: true,
+          captureConditions: true,
+          captureGraphics: {
+            width: 720,
+            height: 500,
+            bg: "white",
+          },
+        });
+        await renderOutput(capture.output || []);
+        renderImages(capture.images || []);
+        const elapsed = ((performance.now() - started) / 1000).toFixed(2);
+        elements.runTime.textContent = `${elapsed}s`;
+        setStatus("Complete", `R finished in ${elapsed}s.`, "ok");
+      } finally {
+        shelter.purge();
+        setBusy(false);
+      }
+    }
+
+    async function renderOutput(output) {
+      const lines = [];
+      for (const item of output) {
+        const text = await outputItemText(item);
+        if (!text) continue;
+        const prefix = item.type && item.type !== "stdout" ? `[${item.type}] ` : "";
+        lines.push(prefix + text);
+      }
+      elements.consoleOutput.textContent = lines.join("\n") || "No console output.";
+    }
+
+    function renderImages(images) {
+      elements.plots.innerHTML = "";
+      if (!images.length) {
+        elements.plots.innerHTML = "<p>No plots captured.</p>";
+        return;
+      }
+      images.forEach((image) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext("2d");
+        context.drawImage(image, 0, 0, image.width, image.height);
+        elements.plots.appendChild(canvas);
+      });
+    }
+
+    async function outputItemText(item) {
+      const data = item?.data;
+      if (typeof data === "string") return data;
+      if (data && typeof data.toJs === "function") {
+        try {
+          const js = await data.toJs();
+          if (Array.isArray(js?.values)) return js.values.join("\n");
+          return JSON.stringify(js);
+        } catch (_) {
+          return String(data);
+        }
+      }
+      if (data == null) return "";
+      return String(data);
+    }
+
+    async function loadPackages(packages) {
+      await evalR(`
+        requested <- ${rCharacterVector(packages)}
+        missing <- requested[!vapply(requested, function(pkg) length(find.package(pkg, quiet = TRUE)) > 0, logical(1))]
+        if (length(missing)) stop("Package(s) not found in webR library paths: ", paste(missing, collapse = ", "))
+        invisible(lapply(requested, library, character.only = TRUE))
+      `);
+    }
+
+    async function evalR(code) {
+      if (!webR) throw new Error("webR is not initialized.");
+      const result = await webR.evalR(code);
+      try {
+        return await result.toJs();
+      } catch (_) {
+        return result;
+      }
+    }
+
+    async function ensureWebR() {
+      if (!initialized) await startWebR();
+    }
+
+    async function guard(action) {
+      try {
+        await action();
+      } catch (error) {
+        setStatus("Error", error?.message || String(error), "bad");
+        setBusy(false);
+      }
+    }
+
+    function clearOutputs() {
+      elements.consoleOutput.textContent = "Ready.";
+      elements.plots.innerHTML = "";
+      elements.runTime.textContent = "";
+    }
+
+    function setStatus(title, detail, tone) {
+      elements.status.dataset.tone = tone || "warn";
+      elements.status.innerHTML = `<strong>${escapeHtml(title)}</strong><p>${escapeHtml(detail)}</p>`;
+    }
+
+    function setBusy(isBusy) {
+      elements.startR.disabled = isBusy;
+      elements.installPackages.disabled = isBusy || !initialized;
+      elements.bundleFiles.disabled = isBusy || !initialized;
+      elements.runCode.disabled = isBusy || !initialized;
+      elements.bundleLabel.classList.toggle("disabled", isBusy || !initialized);
+    }
+
+    function packageNames() {
+      return Array.from(new Set(elements.packages.value
+        .split(/\r?\n|,/)
+        .map((value) => value.trim())
+        .filter((value) => value && !value.startsWith("#"))));
+    }
+
+    function packageRepoEntries() {
+      const repos = [];
+      const configured = elements.packageRepo.value.trim();
+      if (configured) repos.push({ name: "pixelgen", url: configured.replace(/\/?$/, "/") });
+      repos.push({ name: "webr", url: DEFAULT_WEBR_PACKAGE_REPO });
+      return repos;
+    }
+
+    async function readLibraryBundleFiles(files) {
+      const zipFile = files.find((file) => /\.zip$/i.test(file.name || ""));
+      if (zipFile) return readZipLibraryBundle(zipFile);
+
+      const metadataFile = files.find((file) => /\.(js\.metadata|metadata|json)$/i.test(file.name || ""));
+      const dataFile = files.find((file) => /\.(data|data\.gz)$/i.test(file.name || ""));
+      if (!metadataFile || !dataFile) {
+        throw new Error("Choose either a bundle ZIP, or both .data/.data.gz and .js.metadata files.");
+      }
+      return {
+        blob: dataFile,
+        compressed: /\.data\.gz$/i.test(dataFile.name || ""),
+        metadata: JSON.parse(await metadataFile.text()),
+        label: `${dataFile.name} + ${metadataFile.name}`,
+      };
+    }
+
+    async function readZipLibraryBundle(file) {
+      await loadScript(JSZIP_CDN);
+      const zip = await globalThis.JSZip.loadAsync(file);
+      const entries = Object.values(zip.files).filter((entry) => !entry.dir);
+      const metadataEntry = entries.find((entry) => /\.(js\.metadata|metadata|json)$/i.test(entry.name));
+      const dataEntry = entries.find((entry) => /\.(data|data\.gz)$/i.test(entry.name));
+      if (!metadataEntry || !dataEntry) {
+        throw new Error("Bundle ZIP must contain one .data/.data.gz file and one .js.metadata file.");
+      }
+      const metadata = JSON.parse(await metadataEntry.async("text"));
+      const blob = await dataEntry.async("blob");
+      return {
+        blob: namedBlob(blob, dataEntry.name),
+        compressed: /\.data\.gz$/i.test(dataEntry.name || ""),
+        metadata,
+        label: file.name,
+      };
+    }
+
+    async function prepareMountableLibraryBundle(bundle) {
+      const metadata = { ...bundle.metadata };
+      if (!metadata.gzip) return bundle;
+      if (!bundle.compressed) {
+        throw new Error("Library bundle metadata expects gzip-compressed .data.gz content.");
+      }
+      delete metadata.gzip;
+      return {
+        ...bundle,
+        blob: await ungzipBlob(bundle.blob),
+        metadata,
+      };
+    }
+
+    async function ungzipBlob(blob) {
+      if (typeof DecompressionStream === "function") {
+        const stream = blob.stream().pipeThrough(new DecompressionStream("gzip"));
+        return new Uint8Array(await new Response(stream).arrayBuffer());
+      }
+      await loadScript(PAKO_CDN);
+      return globalThis.pako.ungzip(new Uint8Array(await blob.arrayBuffer()));
+    }
+
+    async function ensureDirectory(path) {
+      try {
+        await webR.FS.mkdir(path);
+      } catch (error) {
+        if (!/file exists|exists/i.test(error?.message || String(error))) throw error;
+      }
+    }
+
+    function loadScript(src) {
+      const existing = document.querySelector(`script[src="${src}"]`);
+      if (existing) {
+        return new Promise((resolve, reject) => {
+          if (existing.dataset.loaded === "true") {
+            resolve();
+            return;
+          }
+          existing.addEventListener("load", resolve, { once: true });
+          existing.addEventListener("error", () => reject(new Error(`Failed to load ${src}`)), { once: true });
+        });
+      }
+      return new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = src;
+        script.async = true;
+        script.onload = () => {
+          script.dataset.loaded = "true";
+          resolve();
+        };
+        script.onerror = () => reject(new Error(`Failed to load ${src}`));
+        document.head.appendChild(script);
+      });
+    }
+
+    function namedBlob(blob, name) {
+      if (typeof File === "function") {
+        return new File([blob], name, { type: blob.type || "application/octet-stream" });
+      }
+      try {
+        Object.defineProperty(blob, "name", { value: name, configurable: true });
+      } catch (_) {
+        // Some browsers expose read-only Blob objects.
+      }
+      return blob;
+    }
+
+    function rNamedVector(entries) {
+      if (!entries.length) return "character()";
+      return `c(${entries.map((entry) => `${entry.name} = ${rString(entry.url)}`).join(", ")})`;
+    }
+
+    function rCharacterVector(values) {
+      const uniqueValues = Array.from(new Set((values || []).map((value) => String(value).trim()).filter(Boolean)));
+      if (!uniqueValues.length) return "character()";
+      return `c(${uniqueValues.map(rString).join(", ")})`;
+    }
+
+    function rString(value) {
+      return JSON.stringify(String(value));
+    }
+
+    function normalizeBaseUrl(value) {
+      const raw = String(value || "").trim();
+      try {
+        const url = new URL(raw, globalThis.location?.href);
+        return url.href.replace(/\/?$/, "/");
+      } catch (_) {
+        return raw.replace(/\/?$/, "/");
+      }
+    }
+
+    function isNullOriginFilePage() {
+      return globalThis.location?.protocol === "file:" || globalThis.location?.origin === "null";
+    }
+
+    function withFileOriginUrlFallback(callback) {
+      if (!isNullOriginFilePage() || typeof globalThis.URL !== "function") return callback();
+
+      const OriginalURL = globalThis.URL;
+      function WebRFileURL(value, base) {
+        if ((base === "null" || base === null) && typeof value === "string") {
+          if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return new OriginalURL(value);
+          if (globalThis.location?.href) return new OriginalURL(value, globalThis.location.href);
+        }
+        return arguments.length >= 2 ? new OriginalURL(value, base) : new OriginalURL(value);
+      }
+
+      WebRFileURL.prototype = OriginalURL.prototype;
+      Object.setPrototypeOf(WebRFileURL, OriginalURL);
+      Object.getOwnPropertyNames(OriginalURL).forEach((property) => {
+        if (property in WebRFileURL) return;
+        try {
+          Object.defineProperty(WebRFileURL, property, Object.getOwnPropertyDescriptor(OriginalURL, property));
+        } catch (_) {
+          // URL statics vary by browser.
+        }
+      });
+
+      globalThis.URL = WebRFileURL;
+      try {
+        const result = callback();
+        if (result && typeof result.finally === "function") {
+          return result.finally(() => {
+            globalThis.URL = OriginalURL;
+          });
+        }
+        globalThis.URL = OriginalURL;
+        return result;
+      } catch (error) {
+        globalThis.URL = OriginalURL;
+        throw error;
+      }
+    }
+
+    function startupMessage(error) {
+      const message = error?.message || String(error);
+      if (isNullOriginFilePage()) {
+        return `webR could not start from this local file page. Try a local static server. Original error: ${message}`;
+      }
+      return message;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#39;",
+      }[char]));
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,308 @@
+name: Release webR R environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_overwrite:
+        description: Overwrite release assets if the tag already exists
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      package_file:
+        description: Package manifest to compile
+        required: true
+        default: "webr-packages/packages"
+      version:
+        description: Optional release version. Defaults to webr-packages/VERSION
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: webr-r-env-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve release settings
+        id: settings
+        shell: bash
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version || '' }}
+          INPUT_PACKAGE_FILE: ${{ github.event.inputs.package_file }}
+        run: |
+          set -euo pipefail
+          version="${INPUT_VERSION:-}"
+          if [[ -z "$version" ]]; then
+            version="$(tr -d '[:space:]' < webr-packages/VERSION)"
+          fi
+          if [[ ! "$version" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "Unsafe release version: $version" >&2
+            exit 1
+          fi
+          if [[ ! -f "$INPUT_PACKAGE_FILE" ]]; then
+            echo "Package file does not exist: $INPUT_PACKAGE_FILE" >&2
+            exit 1
+          fi
+          case "$INPUT_PACKAGE_FILE" in
+            webr-packages/*) ;;
+            *)
+              echo "Package file must live under webr-packages/: $INPUT_PACKAGE_FILE" >&2
+              exit 1
+              ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "package_file=$INPUT_PACKAGE_FILE" >> "$GITHUB_OUTPUT"
+          echo "release_tag=pixelgen-report-webr-r-env-$version" >> "$GITHUB_OUTPUT"
+          echo "package_archive=pixelgen-report-webr-packages-$version.zip" >> "$GITHUB_OUTPUT"
+          echo "library_stem=pixelgen-report-webr-library-$version" >> "$GITHUB_OUTPUT"
+          echo "html_file=pixelgen-r-console-$version.html" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout r-wasm/actions repository
+        uses: actions/checkout@v4
+        with:
+          ref: v2
+          repository: r-wasm/actions
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: .actions
+
+      - name: Patch r-wasm action
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path(".actions/build-rwasm/code.R")
+          text = path.read_text()
+          install = 'pak::pak(c("r-wasm/rwasm"))'
+          patch = (
+              'pak::pak(c("r-wasm/rwasm"))\n\n'
+              'c17_makevars_src <- file.path("webr-packages", "patches", "rwasm-c17.mk")\n'
+              'if (file.exists(c17_makevars_src)) {\n'
+              '  webr_vars <- system.file("webr-vars.mk", package = "rwasm")\n'
+              '  cat(c("", readLines(c17_makevars_src)), file = webr_vars, sep = "\\n", append = TRUE)\n'
+              '  message("Installed webR C17 compiler override: ", webr_vars)\n'
+              '}\n'
+          )
+          if install not in text:
+              raise SystemExit("Expected rwasm install call was not found")
+          path.write_text(text.replace(install, patch))
+
+      - name: Retrieve webR package refs
+        id: package_refs
+        shell: bash
+        env:
+          PACKAGE_FILE: ${{ steps.settings.outputs.package_file }}
+        run: |
+          set -euo pipefail
+          pkgs="$(
+            awk '
+              {
+                gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+                if ($0 == "" || substr($0, 1, 1) == "#") next
+                if (!seen[$0]++) {
+                  if (out != "") out = out ","
+                  out = out $0
+                }
+              }
+              END { print out }
+            ' "$PACKAGE_FILE"
+          )"
+          if [[ -z "$pkgs" ]]; then
+            echo "$PACKAGE_FILE did not contain any package refs" >&2
+            exit 1
+          fi
+          printf 'pkgs=%s\n' "$pkgs" >> "$GITHUB_OUTPUT"
+          mkdir -p _release_assets
+          cp "$PACKAGE_FILE" "_release_assets/pixelgen-report-webr-packages-${{ steps.settings.outputs.version }}.txt"
+
+      - name: Build versioned webR package repo
+        uses: ./.actions/build-rwasm
+        with:
+          packages: ${{ steps.package_refs.outputs.pkgs }}
+          repo-path: _webr_repo/${{ steps.settings.outputs.version }}
+          webr-image: ghcr.io/r-wasm/webr:v0.5.9
+          compress: false
+
+      - name: Fix generated package permissions
+        shell: bash
+        run: sudo chown -R "$(id -u):$(id -g)" _webr_repo
+
+      - name: Verify package index
+        shell: bash
+        env:
+          PACKAGE_FILE: ${{ steps.settings.outputs.package_file }}
+          VERSION: ${{ steps.settings.outputs.version }}
+        run: |
+          set -euo pipefail
+          package_index="_webr_repo/$VERSION/bin/emscripten/contrib/4.5/PACKAGES"
+          if [[ ! -f "$package_index" ]]; then
+            echo "Package index was not built: $package_index" >&2
+            exit 1
+          fi
+          mapfile -t expected < <(
+            awk '
+              {
+                gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+                if ($0 == "" || substr($0, 1, 1) == "#") next
+                sub("@.*$", "", $0)
+                sub("^.*::", "", $0)
+                sub("^.*/", "", $0)
+                if (!seen[$0]++) print $0
+              }
+            ' "$PACKAGE_FILE"
+          )
+          mapfile -t available < <(awk '/^Package:/ { print $2 }' "$package_index" | sort -u)
+          missing=()
+          for package in "${expected[@]}"; do
+            if ! printf '%s\n' "${available[@]}" | grep -Fxq "$package"; then
+              missing+=("$package")
+            fi
+          done
+          if (( ${#missing[@]} )); then
+            echo "The webR package snapshot is missing required binary packages:" >&2
+            printf '  - %s\n' "${missing[@]}" >&2
+            exit 1
+          fi
+          printf 'Verified webR packages: %s\n' "${expected[*]}"
+
+      - name: Build webR package snapshot archive
+        shell: python
+        env:
+          VERSION: ${{ steps.settings.outputs.version }}
+          PACKAGE_ARCHIVE: ${{ steps.settings.outputs.package_archive }}
+        run: |
+          import os
+          import zipfile
+          from pathlib import Path
+
+          version = os.environ["VERSION"]
+          snapshot_dir = Path("_webr_repo") / version
+          package_dir = snapshot_dir / "bin/emscripten/contrib/4.5"
+          if not package_dir.exists():
+              raise SystemExit(f"Package directory was not built: {package_dir}")
+
+          release_dir = Path("_release_assets")
+          release_dir.mkdir(parents=True, exist_ok=True)
+          archive = release_dir / os.environ["PACKAGE_ARCHIVE"]
+          if archive.exists():
+              archive.unlink()
+
+          with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+              for path in sorted(package_dir.rglob("*")):
+                  if path.is_file():
+                      zf.write(path, path.relative_to(snapshot_dir))
+          print(f"Wrote {archive}")
+
+      - name: Build webR library bundle release files
+        shell: bash
+        env:
+          VERSION: ${{ steps.settings.outputs.version }}
+          LIBRARY_STEM: ${{ steps.settings.outputs.library_stem }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e VERSION="$VERSION" \
+            -e LIBRARY_STEM="$LIBRARY_STEM" \
+            -v "$PWD:/work" \
+            -w /work \
+            ghcr.io/r-wasm/webr:v0.5.9 \
+            Rscript -e '
+              if (!requireNamespace("pak", quietly = TRUE)) {
+                install.packages("pak", repos = "https://cloud.r-project.org")
+              }
+              pak::pak("r-wasm/rwasm")
+
+              version <- Sys.getenv("VERSION")
+              library_stem <- Sys.getenv("LIBRARY_STEM")
+              repo_dir <- file.path("_webr_repo", version)
+              out_dir <- file.path("_release_assets", library_stem)
+              dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+              rwasm::make_vfs_library(
+                out_dir = out_dir,
+                out_name = "library.data",
+                repo_dir = repo_dir,
+                compress = TRUE,
+                strip = c("doc", "html", "help", "demo", "tests", "testthat", "vignettes")
+              )
+
+              data_files <- list.files(out_dir, pattern = "\\.data\\.gz$", full.names = TRUE)
+              metadata_files <- list.files(out_dir, pattern = "\\.js\\.metadata$", full.names = TRUE)
+              if (length(data_files) != 1 || length(metadata_files) != 1) {
+                stop("Expected one .data.gz and one .js.metadata file in ", out_dir)
+              }
+              file.copy(data_files, file.path("_release_assets", paste0(library_stem, ".data.gz")), overwrite = TRUE)
+              file.copy(metadata_files, file.path("_release_assets", paste0(library_stem, ".js.metadata")), overwrite = TRUE)
+            '
+
+      - name: Zip webR library bundle
+        shell: python
+        env:
+          LIBRARY_STEM: ${{ steps.settings.outputs.library_stem }}
+        run: |
+          import os
+          import zipfile
+          from pathlib import Path
+
+          stem = os.environ["LIBRARY_STEM"]
+          release_dir = Path("_release_assets")
+          files = [
+              release_dir / f"{stem}.data.gz",
+              release_dir / f"{stem}.js.metadata",
+          ]
+          for path in files:
+              if not path.exists():
+                  raise SystemExit(f"Missing library bundle file: {path}")
+          archive = release_dir / f"{stem}.zip"
+          if archive.exists():
+              archive.unlink()
+          with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+              for path in files:
+                  zf.write(path, path.name)
+          print(f"Wrote {archive}")
+
+      - name: Add HTML release file
+        shell: bash
+        run: |
+          cp index.html "_release_assets/${{ steps.settings.outputs.html_file }}"
+
+      - name: Upload release assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE_OVERWRITE: ${{ github.event.inputs.force_overwrite || 'false' }}
+          RELEASE_TAG: ${{ steps.settings.outputs.release_tag }}
+          VERSION: ${{ steps.settings.outputs.version }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            if [[ "$FORCE_OVERWRITE" != "true" ]]; then
+              echo "Release $RELEASE_TAG already exists. Rerun with force_overwrite=true to replace assets." >&2
+              exit 1
+            fi
+          else
+            gh release create "$RELEASE_TAG" \
+              --target "$GITHUB_SHA" \
+              --title "Pixelgen webR R environment $VERSION" \
+              --notes "Downloadable browser R console plus compiled webR package and library bundle assets for Pixelgen R packages."
+          fi
+
+          args=()
+          if [[ "$FORCE_OVERWRITE" == "true" ]]; then
+            args+=(--clobber)
+          fi
+          mapfile -t assets < <(find _release_assets -maxdepth 1 -type f -print | sort)
+          if (( ${#assets[@]} == 0 )); then
+            echo "No release assets were produced." >&2
+            exit 1
+          fi
+          gh release upload "$RELEASE_TAG" "${assets[@]}" "${args[@]}"
