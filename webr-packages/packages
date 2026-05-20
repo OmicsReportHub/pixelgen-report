@@ -57,10 +57,12 @@ cran::jsonlite
 cran::knitr
 cran::labeling
 cran::later
+cran::lattice
 cran::lazyeval
 cran::lifecycle
 bioc::limma
 cran::magrittr
+cran::Matrix
 cran::matrixStats
 cran::memoise
 cran::mime
