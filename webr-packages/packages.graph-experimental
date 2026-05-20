@@ -1,0 +1,7 @@
+# Optional graph package stack from the Pixi R feature.
+# `igraph` did not appear in the generated webR package index during the first
+# release attempt, so these packages are kept out of the default release bundle.
+
+cran::igraph
+cran::tidygraph
+cran::ggraph

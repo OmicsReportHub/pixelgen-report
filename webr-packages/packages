@@ -17,10 +17,7 @@ cran::pheatmap
 cran::cli
 cran::rlang
 cran::glue
-cran::igraph
-cran::tidygraph
 cran::patchwork
-cran::ggraph
 cran::plotly
 cran::fs
 cran::pbapply

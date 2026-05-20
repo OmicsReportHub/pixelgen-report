@@ -25,7 +25,7 @@ def main() -> None:
 
     package_dir = BUNDLE_DIR / "webr-packages"
     package_dir.mkdir()
-    for name in ["VERSION", "packages", "packages.pixi-full", "README.md"]:
+    for name in ["VERSION", "packages", "packages.graph-experimental", "packages.pixi-full", "README.md"]:
         copy_file(REPO_ROOT / "webr-packages" / name, package_dir / name)
 
     patches_dir = package_dir / "patches"

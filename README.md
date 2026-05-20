@@ -60,6 +60,9 @@ compiled packages without reinstalling during that browser session.
 - `webr-packages/packages.pixi-full` records the R dependencies from the source
   Pixi feature for traceability. Some of those packages have native system
   dependencies and may not compile cleanly for webR without extra patching.
+- `webr-packages/packages.graph-experimental` keeps `igraph`, `tidygraph`, and
+  `ggraph` separate because `igraph` did not appear in the generated webR
+  package index during the first release attempt.
 
 To attempt a fuller build, run the workflow manually with:
 
