@@ -385,7 +385,7 @@ plotly</textarea>
           <span class="pill">canvas plots</span>
         </div>
 
-        <p class="small">Use the release ZIP or the `.data.gz` plus `.js.metadata` pair built by the release workflow. Local files are copied to `pixelgen_data_dir`.</p>
+        <p class="small">Use the release ZIP or the `.data.gz` plus `.js.metadata` pair built by the release workflow. Local files are copied to `pixelgen_data_dir`; keep each file under 200 MB.</p>
       </div>
     </aside>
 
@@ -439,6 +439,8 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
     const DEFAULT_WEBR_PACKAGE_REPO = "https://repo.r-wasm.org/";
     const JSZIP_CDN = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
     const PAKO_CDN = "https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js";
+    const MAX_LOCAL_FILE_BYTES = 200 * 1024 * 1024;
+    const MAX_LOCAL_FILE_TOTAL_BYTES = 500 * 1024 * 1024;
 
     let webR = null;
     let initialized = false;
@@ -563,6 +565,7 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
       await ensureWebR();
       const selected = Array.from(files || []).filter(Boolean);
       if (!selected.length) return;
+      validateLocalFiles(selected);
       setBusy(true);
       setStatus("Mounting files", "Reading selected local files.", "warn");
       try {
@@ -697,9 +700,17 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
       try {
         await action();
       } catch (error) {
-        setStatus("Error", error?.message || String(error), "bad");
+        setStatus("Error", friendlyErrorMessage(error), "bad");
         setBusy(false);
       }
+    }
+
+    function friendlyErrorMessage(error) {
+      const message = error?.message || String(error);
+      if (/allocation size overflow|out of memory|Array buffer allocation failed|maximum memory/i.test(message)) {
+        return "Browser webR ran out of memory. Use smaller files, split large CSV/TSV inputs, or run this step in local R instead of the browser.";
+      }
+      return message;
     }
 
     function clearOutputs() {
@@ -741,6 +752,30 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
       const dot = name.lastIndexOf(".");
       if (dot <= 0) return `${name}-${count + 1}`;
       return `${name.slice(0, dot)}-${count + 1}${name.slice(dot)}`;
+    }
+
+    function validateLocalFiles(files) {
+      const tooLarge = files.filter((file) => file.size > MAX_LOCAL_FILE_BYTES);
+      const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+      if (tooLarge.length) {
+        const names = tooLarge.map((file) => `${file.name} (${formatBytes(file.size)})`).join(", ");
+        throw new Error(`Local file is too large for browser webR memory: ${names}. Keep each file under ${formatBytes(MAX_LOCAL_FILE_BYTES)}, or pre-filter/split it before loading.`);
+      }
+      if (totalSize > MAX_LOCAL_FILE_TOTAL_BYTES) {
+        throw new Error(`Selected files total ${formatBytes(totalSize)}, which is too large for browser webR memory. Keep one selection under ${formatBytes(MAX_LOCAL_FILE_TOTAL_BYTES)}.`);
+      }
+    }
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes)) return "unknown size";
+      const units = ["B", "KB", "MB", "GB"];
+      let value = bytes;
+      let index = 0;
+      while (value >= 1024 && index < units.length - 1) {
+        value /= 1024;
+        index += 1;
+      }
+      return `${value.toFixed(value >= 10 || index === 0 ? 0 : 1)} ${units[index]}`;
     }
 
     async function prepareDataDirectory(path) {
