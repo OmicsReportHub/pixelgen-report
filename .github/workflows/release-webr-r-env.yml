@@ -114,7 +114,7 @@ jobs:
               '  }, character(1))\n'
               '  message("Using patched package refs: ", paste(names(patched_refs), collapse = ", "))\n'
               '}\n'
-              'rwasm::add_pkg(packages, repo_dir = repo_path, remotes = NA, compress = compress)'
+              'rwasm::add_pkg(packages, repo_dir = repo_path, remotes = NULL, compress = compress)'
           )
           if old not in text:
               raise SystemExit("Expected rwasm::add_pkg() call was not found")
