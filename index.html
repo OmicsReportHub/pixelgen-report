@@ -366,7 +366,7 @@ plotly</textarea>
 
         <div class="button-row">
           <button id="start-r">Start R</button>
-          <button id="install-packages" class="secondary" disabled>Install/load packages</button>
+          <button id="install-packages" class="secondary" disabled>Install from repo</button>
         </div>
 
         <label class="file-button" id="bundle-label">
@@ -502,6 +502,14 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
         setStatus("No packages", "Add one package name per line before installing.", "warn");
         return;
       }
+      if (!elements.packageRepo.value.trim()) {
+        setStatus(
+          "Use bundle",
+          "Click Mount bundle and choose pixelgen-report-webr-library-v0.1.0.zip. The package repo ZIP is not a mountable library bundle.",
+          "warn",
+        );
+        return;
+      }
       setBusy(true);
       setStatus("Installing", `Installing/loading ${packages.join(", ")}`, "warn");
       await setPackageRepos();
@@ -616,7 +624,13 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
       await evalR(`
         requested <- ${rCharacterVector(packages)}
         missing <- requested[!vapply(requested, function(pkg) length(find.package(pkg, quiet = TRUE)) > 0, logical(1))]
-        if (length(missing)) stop("Package(s) not found in webR library paths: ", paste(missing, collapse = ", "))
+        if (length(missing)) {
+          stop(
+            "Packages are not in the current webR library: ",
+            paste(missing, collapse = ", "),
+            ". Click Mount bundle and choose pixelgen-report-webr-library-v0.1.0.zip."
+          )
+        }
         invisible(lapply(requested, library, character.only = TRUE))
       `);
     }
