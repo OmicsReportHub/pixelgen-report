@@ -12,6 +12,7 @@ bioc::BiocGenerics
 cran::bit
 cran::bit64
 cran::blob
+local::webr-packages/patched-src/BPCells
 cran::bslib
 cran::cachem
 cran::circlize
@@ -45,6 +46,7 @@ cran::future.apply
 cran::generics
 cran::GetoptLong
 cran::ggplot2
+cran::ggrepel
 cran::ggridges
 cran::GlobalOptions
 cran::globals
@@ -52,6 +54,7 @@ cran::glue
 cran::gtable
 cran::harmony
 cran::here
+cran::hexbin
 cran::highr
 cran::hms
 cran::htmltools
@@ -107,6 +110,7 @@ bioc::S4Vectors
 cran::S7
 cran::sass
 cran::scales
+cran::scattermore
 cran::SeuratObject
 cran::shape
 cran::sp

@@ -350,6 +350,7 @@
           Packages
           <textarea id="packages" class="package-list">dplyr
 stringr
+BPCells
 SeuratObject
 ggplot2
 tidyr
@@ -446,6 +447,7 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
     const UNSUPPORTED_BROWSER_PACKAGES = new Map([
       ["pixelatorr", "pixelatorR is not in the browser bundle because it imports arrow, which is not available in the current webR package index. Run pixelatorR steps in local R and load exported tables here."],
       ["seurat", "Seurat is not in this browser bundle. The current webR package repo also cannot load Seurat because its reticulate dependency is unavailable in webR; run Seurat steps in local R and load exported tables here."],
+      ["seuratdisk", "SeuratDisk is not in this browser bundle because it imports Seurat, which cannot load in the current webR runtime. Convert h5Seurat/h5ad files in local R and load exported tables here."],
     ]);
 
     let webR = null;

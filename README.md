@@ -68,17 +68,20 @@ metadata <- read.delim(file.path(pixelgen_data_dir, "metadata.tsv"), check.names
 ```
 
 The browser bundle includes the webR-compatible part of the Pixelgen R list:
-`dplyr`, `stringr`, `SeuratObject`, `ggplot2`, `tidyr`, `tibble`, `patchwork`,
-`limma`, `ggridges`, `readr`, `harmony`, `pheatmap`, and the existing browser
-plotting/table helpers.
+`dplyr`, `stringr`, `BPCells`, `SeuratObject`, `ggplot2`, `tidyr`, `tibble`,
+`patchwork`, `limma`, `ggridges`, `readr`, `harmony`, `pheatmap`, and the
+existing browser plotting/table helpers. `BPCells` is built from the
+`bnprks/BPCells` `v0.3.1` R package source because it is not in the official
+webR binary package index.
 
 `Seurat` is not included in the browser bundle. Its current CRAN webR package
 depends on `reticulate` and `uwot`, and those dependencies are not available in
 the webR package index used by the browser runtime. `pixelatorR` is also not in
 the browser bundle because it imports `arrow`, which is not available in the
-current webR package index. Run Seurat/pixelatorR workflows in local R, then
-load exported CSV/TSV/RDS summaries in this page for plotting or lighter
-downstream checks.
+current webR package index. `SeuratDisk` is also not included because it imports
+`Seurat`. Run Seurat/pixelatorR/SeuratDisk workflows in local R, then load
+exported CSV/TSV/RDS summaries in this page for plotting or lighter downstream
+checks.
 
 ## Package Manifests
 

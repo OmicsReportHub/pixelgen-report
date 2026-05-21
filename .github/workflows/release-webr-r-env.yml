@@ -123,6 +123,10 @@ jobs:
         shell: bash
         run: python3 webr-packages/patches/prepare_png_source.py
 
+      - name: Prepare BPCells source
+        shell: bash
+        run: python3 webr-packages/patches/prepare_bpcells_source.py
+
       - name: Retrieve webR package refs
         id: package_refs
         shell: bash

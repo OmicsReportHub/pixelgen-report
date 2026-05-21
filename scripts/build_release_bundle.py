@@ -30,7 +30,7 @@ def main() -> None:
 
     patches_dir = package_dir / "patches"
     patches_dir.mkdir()
-    for name in ["rwasm-c17.mk", "prepare_png_source.py"]:
+    for name in ["rwasm-c17.mk", "prepare_bpcells_source.py", "prepare_png_source.py"]:
         copy_file(REPO_ROOT / "webr-packages" / "patches" / name, patches_dir / name)
 
     scripts_dir = BUNDLE_DIR / "scripts"
