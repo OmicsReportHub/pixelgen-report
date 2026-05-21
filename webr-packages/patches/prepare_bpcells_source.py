@@ -54,8 +54,22 @@ def main() -> None:
     if configure.exists():
         configure.chmod(configure.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
+    patch_makevars()
     patch_hdf5_header()
     print(f"Wrote {DESTINATION}")
+
+
+def patch_makevars() -> None:
+    makevars = DESTINATION / "src" / "Makevars.in"
+    text = makevars.read_text(encoding="utf-8")
+    old = "-Wno-ignored-attributes -Wno-unknown-pragmas #"
+    new = (
+        "-Wno-ignored-attributes -Wno-unknown-pragmas "
+        "-Wno-c++11-narrowing -Wno-narrowing #"
+    )
+    if old not in text:
+        raise RuntimeError("Expected BPCells Makevars warning flags were not found")
+    makevars.write_text(text.replace(old, new, 1), encoding="utf-8")
 
 
 def patch_hdf5_header() -> None:
