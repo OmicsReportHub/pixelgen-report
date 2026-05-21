@@ -385,7 +385,7 @@ plotly</textarea>
           <span class="pill">canvas plots</span>
         </div>
 
-        <p class="small">Use the release ZIP or the `.data.gz` plus `.js.metadata` pair built by the release workflow. Local files are copied to `/pixelgen-data`.</p>
+        <p class="small">Use the release ZIP or the `.data.gz` plus `.js.metadata` pair built by the release workflow. Local files are copied to `pixelgen_data_dir`.</p>
       </div>
     </aside>
 
@@ -442,7 +442,8 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
 
     let webR = null;
     let initialized = false;
-    const DATA_MOUNTPOINT = "/pixelgen-data";
+    const DEFAULT_DATA_DIRECTORY = "/home/web_user/pixelgen-data";
+    let dataDirectory = DEFAULT_DATA_DIRECTORY;
     let dataMounted = false;
 
     const elements = {
@@ -565,17 +566,24 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
       setBusy(true);
       setStatus("Mounting files", "Reading selected local files.", "warn");
       try {
-        await ensureDirectory(DATA_MOUNTPOINT);
+        let targetDirectory = await prepareDataDirectory(DEFAULT_DATA_DIRECTORY);
         const written = [];
         const seen = new Map();
         for (const file of selected) {
           const name = uniqueFileName(safeDataFileName(file.name || "file"), seen);
           const bytes = new Uint8Array(await file.arrayBuffer());
-          await webR.FS.writeFile(`${DATA_MOUNTPOINT}/${name}`, bytes);
+          try {
+            await webR.FS.writeFile(`${targetDirectory}/${name}`, bytes);
+          } catch (error) {
+            targetDirectory = await prepareDataDirectory(`/home/web_user/pixelgen-data-${Date.now()}`);
+            await webR.FS.writeFile(`${targetDirectory}/${name}`, bytes);
+          }
           written.push(name);
         }
+        dataDirectory = targetDirectory;
+        await exposeDataDirectory(dataDirectory);
         dataMounted = true;
-        setStatus("Files ready", `Copied ${written.join(", ")} to ${DATA_MOUNTPOINT}.`, "ok");
+        setStatus("Files ready", `Copied ${written.join(", ")} to ${dataDirectory}. Use pixelgen_data_dir in R.`, "ok");
       } finally {
         elements.dataFiles.value = "";
         setBusy(false);
@@ -735,6 +743,23 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
       return `${name.slice(0, dot)}-${count + 1}${name.slice(dot)}`;
     }
 
+    async function prepareDataDirectory(path) {
+      await evalR(`
+        data_dir <- ${rString(path)}
+        if (file.exists(data_dir) && !dir.exists(data_dir)) unlink(data_dir, recursive = TRUE, force = TRUE)
+        dir.create(data_dir, recursive = TRUE, showWarnings = FALSE)
+        if (!dir.exists(data_dir)) stop("Could not create local data directory: ", data_dir)
+      `);
+      return path;
+    }
+
+    async function exposeDataDirectory(path) {
+      await evalR(`
+        pixelgen_data_dir <- ${rString(path)}
+        options(pixelgen_data_dir = pixelgen_data_dir)
+      `);
+    }
+
     function packageRepoEntries() {
       const repos = [];
       const configured = elements.packageRepo.value.trim();
@@ -806,7 +831,8 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
       try {
         await webR.FS.mkdir(path);
       } catch (error) {
-        if (!/file exists|exists/i.test(error?.message || String(error))) throw error;
+        const message = error?.message || String(error);
+        if (!/file exists|exists|ErrnoError:\s*20/i.test(message)) throw error;
       }
     }
 
