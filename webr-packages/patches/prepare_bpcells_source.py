@@ -54,7 +54,30 @@ def main() -> None:
     if configure.exists():
         configure.chmod(configure.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
+    patch_hdf5_header()
     print(f"Wrote {DESTINATION}")
+
+
+def patch_hdf5_header() -> None:
+    header = DESTINATION / "src" / "bpcells-cpp" / "arrayIO" / "hdf5.h"
+    text = header.read_text(encoding="utf-8")
+    replacements = {
+        "dataset.resize({cur_size + count});": (
+            "dataset.resize({static_cast<size_t>(cur_size + count)});"
+        ),
+        "dataset.select({cur_size}, {count}).write_raw(in, datatype);": (
+            "dataset.select({static_cast<size_t>(cur_size)}, "
+            "{static_cast<size_t>(count)}).write_raw(in, datatype);"
+        ),
+        "dataset.select({pos}, {count}).read_raw(out, datatype);": (
+            "dataset.select({pos}, {static_cast<size_t>(count)}).read_raw(out, datatype);"
+        ),
+    }
+    for old, new in replacements.items():
+        if old not in text:
+            raise RuntimeError(f"Expected BPCells HDF5 source line was not found: {old}")
+        text = text.replace(old, new)
+    header.write_text(text, encoding="utf-8")
 
 
 if __name__ == "__main__":
