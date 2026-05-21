@@ -184,6 +184,7 @@ jobs:
             exit 0
           fi
           package_dir="_webr_repo/$VERSION/bin/emscripten/contrib/4.5"
+          sudo chown -R "$(id -u):$(id -g)" _webr_repo
           mkdir -p "$package_dir"
           tmp_index="$(mktemp)"
           curl -fsSL "$UPSTREAM_REPO/PACKAGES" -o "$tmp_index"
