@@ -56,6 +56,7 @@ def main() -> None:
 
     patch_makevars()
     patch_hdf5_header()
+    patch_highway_build()
     print(f"Wrote {DESTINATION}")
 
 
@@ -99,6 +100,26 @@ def patch_hdf5_header() -> None:
             raise RuntimeError(f"Expected BPCells HDF5 source line was not found: {old}")
         text = text.replace(old, new)
     header.write_text(text, encoding="utf-8")
+
+
+def patch_highway_build() -> None:
+    build_script = (
+        DESTINATION / "src" / "vendor" / "highway" / "manual-build" / "build_highway.sh"
+    )
+    text = build_script.read_text(encoding="utf-8")
+    old = (
+        "    hwy/nanobenchmark.cc\n"
+        "    hwy/per_target.cc\n"
+    )
+    new = (
+        "    hwy/nanobenchmark.cc\n"
+        "    hwy/timer.cc\n"
+        "    hwy/per_target.cc\n"
+    )
+    if old not in text:
+        raise RuntimeError("Expected Highway source list was not found")
+    text = text.replace(old, new, 1)
+    build_script.write_text(text, encoding="utf-8")
 
 
 if __name__ == "__main__":
