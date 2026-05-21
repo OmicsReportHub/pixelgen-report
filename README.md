@@ -54,10 +54,10 @@ Use the library ZIP in the HTML page's "Mount bundle" control to load the
 compiled packages without reinstalling during that browser session.
 
 To read local analysis files in the browser, click "Mount local files" and
-choose the files. They are copied into the webR session and the path is stored
-as `pixelgen_data_dir`. Browser webR keeps these files in memory, so keep each
-file under about 200 MB and each selection under about 500 MB. For larger raw
-matrices, split or pre-filter the file first, or run that part in local R.
+choose the files. They are mounted read-only into the webR session and the path
+is stored as `pixelgen_data_dir`. Mounting does not copy the whole file into
+webR first, but R still needs browser memory for the data it reads. For larger
+raw matrices, split or pre-filter the file first, or run that part in local R.
 
 Example:
 

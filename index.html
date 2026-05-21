@@ -385,7 +385,7 @@ plotly</textarea>
           <span class="pill">canvas plots</span>
         </div>
 
-        <p class="small">Use the release ZIP or the `.data.gz` plus `.js.metadata` pair built by the release workflow. Local files are copied to `pixelgen_data_dir`; keep each file under 200 MB.</p>
+        <p class="small">Use the release ZIP or the `.data.gz` plus `.js.metadata` pair built by the release workflow. Local files mount read-only at `pixelgen_data_dir`.</p>
       </div>
     </aside>
 
@@ -439,8 +439,7 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
     const DEFAULT_WEBR_PACKAGE_REPO = "https://repo.r-wasm.org/";
     const JSZIP_CDN = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
     const PAKO_CDN = "https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js";
-    const MAX_LOCAL_FILE_BYTES = 200 * 1024 * 1024;
-    const MAX_LOCAL_FILE_TOTAL_BYTES = 500 * 1024 * 1024;
+    const LOCAL_FILE_WARN_BYTES = 200 * 1024 * 1024;
 
     let webR = null;
     let initialized = false;
@@ -565,28 +564,39 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
       await ensureWebR();
       const selected = Array.from(files || []).filter(Boolean);
       if (!selected.length) return;
-      validateLocalFiles(selected);
       setBusy(true);
-      setStatus("Mounting files", "Reading selected local files.", "warn");
+      setStatus("Mounting files", "Mounting selected local files read-only.", "warn");
       try {
         let targetDirectory = await prepareDataDirectory(DEFAULT_DATA_DIRECTORY);
-        const written = [];
         const seen = new Map();
-        for (const file of selected) {
+        const packages = selected.map((file) => {
           const name = uniqueFileName(safeDataFileName(file.name || "file"), seen);
-          const bytes = new Uint8Array(await file.arrayBuffer());
-          try {
-            await webR.FS.writeFile(`${targetDirectory}/${name}`, bytes);
-          } catch (error) {
-            targetDirectory = await prepareDataDirectory(`/home/web_user/pixelgen-data-${Date.now()}`);
-            await webR.FS.writeFile(`${targetDirectory}/${name}`, bytes);
-          }
-          written.push(name);
+          return {
+            name,
+            blob: file,
+            metadata: {
+              files: [{
+                filename: `/${name}`,
+                start: 0,
+                end: file.size,
+              }],
+            },
+          };
+        });
+        try {
+          await mountLocalFilePackages(targetDirectory, packages);
+        } catch (error) {
+          targetDirectory = await prepareDataDirectory(`/home/web_user/pixelgen-data-${Date.now()}`);
+          await mountLocalFilePackages(targetDirectory, packages);
         }
         dataDirectory = targetDirectory;
         await exposeDataDirectory(dataDirectory);
         dataMounted = true;
-        setStatus("Files ready", `Copied ${written.join(", ")} to ${dataDirectory}. Use pixelgen_data_dir in R.`, "ok");
+        const largeFiles = selected.filter((file) => file.size > LOCAL_FILE_WARN_BYTES);
+        const warning = largeFiles.length
+          ? ` Large files (${largeFiles.map((file) => `${file.name}: ${formatBytes(file.size)}`).join(", ")}) can still exceed browser memory when R reads them.`
+          : "";
+        setStatus("Files mounted", `Mounted ${packages.map((pkg) => pkg.name).join(", ")} at ${dataDirectory}. Use pixelgen_data_dir in R.${warning}`, "ok");
       } finally {
         elements.dataFiles.value = "";
         setBusy(false);
@@ -754,18 +764,6 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
       return `${name.slice(0, dot)}-${count + 1}${name.slice(dot)}`;
     }
 
-    function validateLocalFiles(files) {
-      const tooLarge = files.filter((file) => file.size > MAX_LOCAL_FILE_BYTES);
-      const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-      if (tooLarge.length) {
-        const names = tooLarge.map((file) => `${file.name} (${formatBytes(file.size)})`).join(", ");
-        throw new Error(`Local file is too large for browser webR memory: ${names}. Keep each file under ${formatBytes(MAX_LOCAL_FILE_BYTES)}, or pre-filter/split it before loading.`);
-      }
-      if (totalSize > MAX_LOCAL_FILE_TOTAL_BYTES) {
-        throw new Error(`Selected files total ${formatBytes(totalSize)}, which is too large for browser webR memory. Keep one selection under ${formatBytes(MAX_LOCAL_FILE_TOTAL_BYTES)}.`);
-      }
-    }
-
     function formatBytes(bytes) {
       if (!Number.isFinite(bytes)) return "unknown size";
       const units = ["B", "KB", "MB", "GB"];
@@ -786,6 +784,20 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
         if (!dir.exists(data_dir)) stop("Could not create local data directory: ", data_dir)
       `);
       return path;
+    }
+
+    async function mountLocalFilePackages(path, packages) {
+      try {
+        await webR.FS.unmount(path);
+      } catch (_) {
+        // It is fine when the directory has not been mounted before.
+      }
+      await webR.FS.mount("WORKERFS", {
+        packages: packages.map((pkg) => ({
+          blob: pkg.blob,
+          metadata: pkg.metadata,
+        })),
+      }, path);
     }
 
     async function exposeDataDirectory(path) {
