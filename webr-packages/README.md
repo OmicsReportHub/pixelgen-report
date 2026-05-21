@@ -41,6 +41,8 @@ browser refresh.
   zlib, and adds `hwy/timer.cc` to BPCells' vendored Highway static-library
   build so `BPCells.so` does not leave Highway timer symbols unresolved at
   browser load time.
+- `patches/prepare_pixelatorr_source.py` downloads the `pixelatorR` `v0.17.1`
+  source release for local webR compilation.
 - `patches/rwasm-c17.mk` keeps local builds aligned with webR's compiler
   settings.
 - `patches/prepare_png_source.py` patches `png` for webR by replacing its

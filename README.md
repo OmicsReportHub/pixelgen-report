@@ -68,20 +68,19 @@ metadata <- read.delim(file.path(pixelgen_data_dir, "metadata.tsv"), check.names
 ```
 
 The browser bundle includes the webR-compatible part of the Pixelgen R list:
-`dplyr`, `stringr`, `BPCells`, `SeuratObject`, `ggplot2`, `tidyr`, `tibble`,
-`patchwork`, `limma`, `ggridges`, `readr`, `harmony`, `pheatmap`, and the
-existing browser plotting/table helpers. `BPCells` is built from the
-`bnprks/BPCells` `v0.3.1` R package source because it is not in the official
-webR binary package index.
+`dplyr`, `stringr`, `BPCells`, `pixelatorR`, `SeuratObject`, `ggplot2`,
+`tidyr`, `tibble`, `patchwork`, `limma`, `ggridges`, `readr`, `harmony`,
+`pheatmap`, and the existing browser plotting/table helpers. `BPCells` is built
+from the `bnprks/BPCells` `v0.3.1` R package source because it is not in the
+official webR binary package index. `pixelatorR` is built from the
+`PixelgenTechnologies/pixelatorR` `v0.17.1` source release.
 
 `Seurat` is not included in the browser bundle. Its current CRAN webR package
 depends on `reticulate` and `uwot`, and those dependencies are not available in
-the webR package index used by the browser runtime. `pixelatorR` is also not in
-the browser bundle because it imports `arrow`, which is not available in the
-current webR package index. `SeuratDisk` is also not included because it imports
-`Seurat`. Run Seurat/pixelatorR/SeuratDisk workflows in local R, then load
-exported CSV/TSV/RDS summaries in this page for plotting or lighter downstream
-checks.
+the webR package index used by the browser runtime. `SeuratDisk` is also not
+included because it imports `Seurat`. Run Seurat/SeuratDisk workflows in local R,
+then load exported CSV/TSV/RDS summaries in this page for plotting or lighter
+downstream checks.
 
 ## Package Manifests
 
@@ -90,9 +89,9 @@ checks.
 - `webr-packages/packages.pixi-full` records the R dependencies from the source
   Pixi feature for traceability. Some of those packages have native system
   dependencies and may not compile cleanly for webR without extra patching.
-- `webr-packages/packages.graph-experimental` keeps `igraph`, `tidygraph`, and
-  `ggraph` separate because `igraph` did not appear in the generated webR
-  package index during the first release attempt.
+- `webr-packages/packages.graph-experimental` records the older isolated graph
+  stack build attempt. The default manifest now includes the graph stack because
+  it is required by `pixelatorR`.
 
 To attempt a fuller build, run the workflow manually with:
 

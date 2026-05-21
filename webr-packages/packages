@@ -7,6 +7,8 @@
 # dependency resolution while mounting the library bundle in a browser.
 
 cran::askpass
+cran::arrow
+cran::assertthat
 cran::base64enc
 bioc::BiocGenerics
 cran::bit
@@ -35,6 +37,7 @@ cran::digest
 cran::doParallel
 cran::dotCall64
 cran::dplyr
+cran::duckdb
 cran::evaluate
 cran::farver
 cran::fastmap
@@ -45,21 +48,26 @@ cran::future
 cran::future.apply
 cran::generics
 cran::GetoptLong
+cran::ggforce
 cran::ggplot2
 cran::ggrepel
 cran::ggridges
+cran::ggraph
 cran::GlobalOptions
 cran::globals
 cran::glue
+cran::graphlayouts
 cran::gtable
 cran::harmony
 cran::here
 cran::hexbin
+cran::hdf5r
 cran::highr
 cran::hms
 cran::htmltools
 cran::htmlwidgets
 cran::httr
+cran::igraph
 bioc::IRanges
 cran::isoband
 cran::iterators
@@ -85,9 +93,11 @@ cran::patchwork
 cran::pbapply
 cran::pheatmap
 cran::pillar
+local::webr-packages/patched-src/pixelatorR
 cran::pkgconfig
 cran::plotly
 cran::png
+cran::polyclip
 cran::prettyunits
 cran::progress
 cran::progressr
@@ -119,13 +129,17 @@ cran::statmod
 cran::stringi
 cran::stringr
 cran::sys
+cran::systemfonts
 cran::tibble
 cran::tidyr
+cran::tidygraph
 cran::tidyselect
 cran::tinytex
+cran::tweenr
 cran::tzdb
 cran::utf8
 cran::vctrs
+cran::viridis
 cran::viridisLite
 cran::vroom
 cran::withr
