@@ -349,18 +349,21 @@
         <label>
           Packages
           <textarea id="packages" class="package-list">dplyr
-tidyr
-readr
+stringr
+SeuratObject
 ggplot2
+tidyr
+tibble
+patchwork
+limma
+ggridges
+readr
+harmony
+pheatmap
 yaml
 jsonlite
-tibble
-stringr
 Matrix
-limma
 ComplexHeatmap
-pheatmap
-patchwork
 plotly</textarea>
         </label>
 
@@ -440,6 +443,10 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
     const JSZIP_CDN = "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js";
     const PAKO_CDN = "https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js";
     const LOCAL_FILE_WARN_BYTES = 200 * 1024 * 1024;
+    const UNSUPPORTED_BROWSER_PACKAGES = new Map([
+      ["pixelatorr", "pixelatorR is not in the browser bundle because it imports arrow, which is not available in the current webR package index. Run pixelatorR steps in local R and load exported tables here."],
+      ["seurat", "Seurat is not in this browser bundle. The current webR package repo also cannot load Seurat because its reticulate dependency is unavailable in webR; run Seurat steps in local R and load exported tables here."],
+    ]);
 
     let webR = null;
     let initialized = false;
@@ -512,6 +519,7 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
     async function installAndLoadPackages() {
       await ensureWebR();
       const packages = packageNames();
+      assertSupportedBrowserPackages(packages);
       if (!packages.length) {
         setStatus("No packages", "Add one package name per line before installing.", "warn");
         return;
@@ -552,6 +560,7 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
         }, mountpoint);
         await evalR(`.libPaths(unique(c(${rString(mountpoint)}, .libPaths())))`);
         const packages = packageNames();
+        assertSupportedBrowserPackages(packages);
         if (packages.length) await loadPackages(packages);
         setStatus("Bundle mounted", `Mounted ${bundle.label}.`, "ok");
       } finally {
@@ -607,6 +616,7 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
       await ensureWebR();
       const code = elements.rCode.value.trim();
       if (!code) return;
+      assertSupportedBrowserPackages(packagesReferencedInCode(code));
       clearOutputs();
       setBusy(true);
       setStatus("Running", "Evaluating R code.", "warn");
@@ -749,6 +759,26 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
         .split(/\r?\n|,/)
         .map((value) => value.trim())
         .filter((value) => value && !value.startsWith("#"))));
+    }
+
+    function packagesReferencedInCode(code) {
+      const names = [];
+      const patterns = [
+        /\blibrary\s*\(\s*["']?([A-Za-z][A-Za-z0-9.]*)["']?/g,
+        /\brequire\s*\(\s*["']?([A-Za-z][A-Za-z0-9.]*)["']?/g,
+      ];
+      for (const pattern of patterns) {
+        let match = null;
+        while ((match = pattern.exec(code))) names.push(match[1]);
+      }
+      return Array.from(new Set(names));
+    }
+
+    function assertSupportedBrowserPackages(packages) {
+      for (const pkg of packages || []) {
+        const message = UNSUPPORTED_BROWSER_PACKAGES.get(String(pkg).toLowerCase());
+        if (message) throw new Error(message);
+      }
     }
 
     function safeDataFileName(name) {
