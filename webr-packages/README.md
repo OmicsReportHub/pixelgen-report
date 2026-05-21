@@ -30,3 +30,12 @@ pixelgen-report-webr-library-v0.1.0.js.metadata
 
 The mounted library is session-scoped browser state. Mount it again after a
 browser refresh.
+
+## webR Build Patches
+
+- `patches/rwasm-c17.mk` keeps local builds aligned with webR's compiler
+  settings.
+- `patches/prepare_png_source.py` patches `png` for webR by replacing its
+  CRAN-check-only dummy routine calls. Without this, `png.so` imports
+  `R_registerRoutines` and `R_useDynamicSymbols` with an ABI that the browser
+  runtime rejects.

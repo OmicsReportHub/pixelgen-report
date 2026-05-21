@@ -98,10 +98,30 @@ jobs:
           text = text.replace(install, patch)
 
           old = 'rwasm::add_pkg(packages, repo_dir = repo_path, compress = compress)'
-          new = 'rwasm::add_pkg(packages, repo_dir = repo_path, remotes = NULL, compress = compress)'
+          new = (
+              'patched_srcs <- c(png = file.path("webr-packages", "patched-src", "png"))\n'
+              'patched_refs <- lapply(patched_srcs, function(src) {\n'
+              '  if (dir.exists(src)) paste0("local::", normalizePath(src, winslash = "/", mustWork = TRUE)) else NULL\n'
+              '})\n'
+              'patched_refs <- patched_refs[lengths(patched_refs) > 0]\n'
+              'if (length(patched_refs)) {\n'
+              '  packages <- vapply(packages, function(pkg) {\n'
+              '    pkg_name <- sub("@.*$", "", pkg)\n'
+              '    pkg_name <- sub("^.*::", "", pkg_name)\n'
+              '    pkg_name <- sub("^.*/", "", pkg_name)\n'
+              '    if (pkg_name %in% names(patched_refs)) patched_refs[[pkg_name]] else pkg\n'
+              '  }, character(1))\n'
+              '  message("Using patched package refs: ", paste(names(patched_refs), collapse = ", "))\n'
+              '}\n'
+              'rwasm::add_pkg(packages, repo_dir = repo_path, remotes = NULL, compress = compress)'
+          )
           if old not in text:
               raise SystemExit("Expected rwasm::add_pkg() call was not found")
           path.write_text(text.replace(old, new))
+
+      - name: Prepare patched png source
+        shell: bash
+        run: python3 webr-packages/patches/prepare_png_source.py
 
       - name: Retrieve webR package refs
         id: package_refs
@@ -142,6 +162,27 @@ jobs:
       - name: Fix generated package permissions
         shell: bash
         run: sudo chown -R "$(id -u):$(id -g)" _webr_repo
+
+      - name: Verify webR package ABI
+        shell: bash
+        env:
+          VERSION: ${{ steps.settings.outputs.version }}
+        run: |
+          set -euo pipefail
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
+          curl -fsSL "https://webr.r-wasm.org/v0.5.9/R.wasm" -o "$tmpdir/R.wasm"
+          mkdir -p "$tmpdir/packages"
+          package_dir="_webr_repo/$VERSION/bin/emscripten/contrib/4.5"
+          find "$package_dir" -name '*.tgz' -print0 | while IFS= read -r -d '' package; do
+            tar -xzf "$package" -C "$tmpdir/packages"
+          done
+          mapfile -t side_modules < <(find "$tmpdir/packages" -path '*/libs/*.so' -type f | sort)
+          if (( ${#side_modules[@]} )); then
+            node scripts/check_webr_package_abi.cjs "$tmpdir/R.wasm" "${side_modules[@]}"
+          else
+            echo "No package side modules found for ABI check."
+          fi
 
       - name: Verify package index
         shell: bash

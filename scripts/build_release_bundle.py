@@ -30,9 +30,14 @@ def main() -> None:
 
     patches_dir = package_dir / "patches"
     patches_dir.mkdir()
+    for name in ["rwasm-c17.mk", "prepare_png_source.py"]:
+        copy_file(REPO_ROOT / "webr-packages" / "patches" / name, patches_dir / name)
+
+    scripts_dir = BUNDLE_DIR / "scripts"
+    scripts_dir.mkdir()
     copy_file(
-        REPO_ROOT / "webr-packages" / "patches" / "rwasm-c17.mk",
-        patches_dir / "rwasm-c17.mk",
+        REPO_ROOT / "scripts" / "check_webr_package_abi.cjs",
+        scripts_dir / "check_webr_package_abi.cjs",
     )
 
     workflow_dir = BUNDLE_DIR / ".github" / "workflows"
