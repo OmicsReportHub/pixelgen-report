@@ -47,8 +47,9 @@ browser refresh.
   browser-compatible `arrow` package, which is not currently available.
 - `upstream-binaries` lists official webR binary packages that the release
   workflow copies from `repo.r-wasm.org` after the local build. The graph stack
-  used by `pixelatorR` is handled this way because the CRAN source build is not
-  reliable under the current webR toolchain.
+  and selected runtime dependencies used by `pixelatorR` are handled this way
+  because their CRAN source builds are not reliable under the current webR
+  toolchain.
 - `patches/rwasm-c17.mk` keeps local builds aligned with webR's compiler
   settings.
 - `patches/prepare_png_source.py` patches `png` for webR by replacing its

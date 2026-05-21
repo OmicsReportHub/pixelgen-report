@@ -91,7 +91,7 @@ downstream checks.
   runtime dependency closure used by the release workflow.
 - `webr-packages/upstream-binaries` lists official webR binary packages copied
   into the release repository instead of rebuilt from CRAN source. This is used
-  for the graph stack required by `pixelatorR`.
+  for the graph stack and runtime packages required by `pixelatorR`.
 - `webr-packages/packages.pixi-full` records the R dependencies from the source
   Pixi feature for traceability. Some of those packages have native system
   dependencies and may not compile cleanly for webR without extra patching.
