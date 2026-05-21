@@ -374,13 +374,18 @@ plotly</textarea>
           <input id="bundle-files" type="file" accept=".zip,.data,.gz,.metadata,.json" multiple disabled>
         </label>
 
+        <label class="file-button" id="data-label">
+          Mount local files
+          <input id="data-files" type="file" multiple disabled>
+        </label>
+
         <div class="pill-row" aria-label="Release files">
           <span class="pill">webR v0.5.9</span>
           <span class="pill">R packages only</span>
           <span class="pill">canvas plots</span>
         </div>
 
-        <p class="small">Use the release ZIP or the `.data.gz` plus `.js.metadata` pair built by the release workflow.</p>
+        <p class="small">Use the release ZIP or the `.data.gz` plus `.js.metadata` pair built by the release workflow. Local files are copied to `/pixelgen-data`.</p>
       </div>
     </aside>
 
@@ -437,6 +442,8 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
 
     let webR = null;
     let initialized = false;
+    const DATA_MOUNTPOINT = "/pixelgen-data";
+    let dataMounted = false;
 
     const elements = {
       status: document.getElementById("status"),
@@ -447,6 +454,8 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
       installPackages: document.getElementById("install-packages"),
       bundleFiles: document.getElementById("bundle-files"),
       bundleLabel: document.getElementById("bundle-label"),
+      dataFiles: document.getElementById("data-files"),
+      dataLabel: document.getElementById("data-label"),
       runCode: document.getElementById("run-code"),
       clearOutput: document.getElementById("clear-output"),
       rCode: document.getElementById("r-code"),
@@ -458,6 +467,7 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
     elements.startR.addEventListener("click", () => guard(startWebR));
     elements.installPackages.addEventListener("click", () => guard(installAndLoadPackages));
     elements.bundleFiles.addEventListener("change", (event) => guard(() => mountBundle(event.target.files)));
+    elements.dataFiles.addEventListener("change", (event) => guard(() => mountLocalFiles(event.target.files)));
     elements.runCode.addEventListener("click", () => guard(runCode));
     elements.clearOutput.addEventListener("click", clearOutputs);
 
@@ -480,6 +490,8 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
         elements.installPackages.disabled = false;
         elements.bundleFiles.disabled = false;
         elements.bundleLabel.classList.remove("disabled");
+        elements.dataFiles.disabled = false;
+        elements.dataLabel.classList.remove("disabled");
         elements.runCode.disabled = false;
       } catch (error) {
         webR = null;
@@ -542,6 +554,30 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
         setStatus("Bundle mounted", `Mounted ${bundle.label}.`, "ok");
       } finally {
         elements.bundleFiles.value = "";
+        setBusy(false);
+      }
+    }
+
+    async function mountLocalFiles(files) {
+      await ensureWebR();
+      const selected = Array.from(files || []).filter(Boolean);
+      if (!selected.length) return;
+      setBusy(true);
+      setStatus("Mounting files", "Reading selected local files.", "warn");
+      try {
+        await ensureDirectory(DATA_MOUNTPOINT);
+        const written = [];
+        const seen = new Map();
+        for (const file of selected) {
+          const name = uniqueFileName(safeDataFileName(file.name || "file"), seen);
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          await webR.FS.writeFile(`${DATA_MOUNTPOINT}/${name}`, bytes);
+          written.push(name);
+        }
+        dataMounted = true;
+        setStatus("Files ready", `Copied ${written.join(", ")} to ${DATA_MOUNTPOINT}.`, "ok");
+      } finally {
+        elements.dataFiles.value = "";
         setBusy(false);
       }
     }
@@ -673,8 +709,10 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
       elements.startR.disabled = isBusy;
       elements.installPackages.disabled = isBusy || !initialized;
       elements.bundleFiles.disabled = isBusy || !initialized;
+      elements.dataFiles.disabled = isBusy || !initialized;
       elements.runCode.disabled = isBusy || !initialized;
       elements.bundleLabel.classList.toggle("disabled", isBusy || !initialized);
+      elements.dataLabel.classList.toggle("disabled", isBusy || !initialized);
     }
 
     function packageNames() {
@@ -682,6 +720,19 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
         .split(/\r?\n|,/)
         .map((value) => value.trim())
         .filter((value) => value && !value.startsWith("#"))));
+    }
+
+    function safeDataFileName(name) {
+      return name.split(/[\\/]/).pop().replace(/[^\w.\-()+ ]/g, "_") || "file";
+    }
+
+    function uniqueFileName(name, seen) {
+      const count = seen.get(name) || 0;
+      seen.set(name, count + 1);
+      if (!count) return name;
+      const dot = name.lastIndexOf(".");
+      if (dot <= 0) return `${name}-${count + 1}`;
+      return `${name.slice(0, dot)}-${count + 1}${name.slice(dot)}`;
     }
 
     function packageRepoEntries() {

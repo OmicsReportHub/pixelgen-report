@@ -53,6 +53,15 @@ Release downloads include:
 Use the library ZIP in the HTML page's "Mount bundle" control to load the
 compiled packages without reinstalling during that browser session.
 
+To read local analysis files in the browser, click "Mount local files" and
+choose the files. They are copied into the webR session under
+`/pixelgen-data`, for example:
+
+```r
+counts <- read.csv("/pixelgen-data/counts.csv", check.names = FALSE)
+metadata <- read.delim("/pixelgen-data/metadata.tsv", check.names = FALSE)
+```
+
 ## Package Manifests
 
 - `webr-packages/packages` is the default browser package set plus its explicit
