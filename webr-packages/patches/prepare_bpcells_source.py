@@ -62,14 +62,21 @@ def main() -> None:
 def patch_makevars() -> None:
     makevars = DESTINATION / "src" / "Makevars.in"
     text = makevars.read_text(encoding="utf-8")
-    old = "-Wno-ignored-attributes -Wno-unknown-pragmas #"
-    new = (
+    flag_old = "-Wno-ignored-attributes -Wno-unknown-pragmas #"
+    flag_new = (
         "-Wno-ignored-attributes -Wno-unknown-pragmas "
         "-Wno-c++11-narrowing -Wno-narrowing #"
     )
-    if old not in text:
+    if flag_old not in text:
         raise RuntimeError("Expected BPCells Makevars warning flags were not found")
-    makevars.write_text(text.replace(old, new, 1), encoding="utf-8")
+    text = text.replace(flag_old, flag_new, 1)
+
+    libs_old = "PKG_LIBS = -lz %HDF5_LIBS% %CXX_FS_FLAG% %HWY_LIBS% %ENV_LDFLAGS%"
+    libs_new = "PKG_LIBS = %HDF5_LIBS% %CXX_FS_FLAG% %HWY_LIBS% %ENV_LDFLAGS%"
+    if libs_old not in text:
+        raise RuntimeError("Expected BPCells Makevars library flags were not found")
+    text = text.replace(libs_old, libs_new, 1)
+    makevars.write_text(text, encoding="utf-8")
 
 
 def patch_hdf5_header() -> None:

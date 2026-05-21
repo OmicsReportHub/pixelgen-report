@@ -36,7 +36,9 @@ browser refresh.
 - `patches/prepare_bpcells_source.py` downloads the `BPCells` `v0.3.1` R
   package source, patches a few HDF5 dimension casts, and disables Clang's
   C++11 narrowing diagnostic for additional HDF5 dimension initializer lists
-  that Emscripten rejects during the wasm build.
+  that Emscripten rejects during the wasm build. It also removes BPCells'
+  duplicate explicit `-lz` link flag because the webR HDF5 flags already supply
+  zlib.
 - `patches/rwasm-c17.mk` keeps local builds aligned with webR's compiler
   settings.
 - `patches/prepare_png_source.py` patches `png` for webR by replacing its
