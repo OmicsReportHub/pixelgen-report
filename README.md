@@ -73,7 +73,10 @@ The browser bundle includes the webR-compatible part of the Pixelgen R list:
 `pheatmap`, and the existing browser plotting/table helpers. `BPCells` is built
 from the `bnprks/BPCells` `v0.3.1` R package source because it is not in the
 official webR binary package index. `pixelatorR` is built from the
-`PixelgenTechnologies/pixelatorR` `v0.17.1` source release.
+`PixelgenTechnologies/pixelatorR` `v0.17.1` source release with `arrow` moved to
+an optional browser dependency because `arrow` does not currently produce a webR
+binary. PixelatorR functions that read or write parquet/Arrow data still require
+`arrow` and are expected to fail in the browser build.
 
 `Seurat` is not included in the browser bundle. Its current CRAN webR package
 depends on `reticulate` and `uwot`, and those dependencies are not available in
@@ -86,12 +89,15 @@ downstream checks.
 
 - `webr-packages/packages` is the default browser package set plus its explicit
   runtime dependency closure used by the release workflow.
+- `webr-packages/upstream-binaries` lists official webR binary packages copied
+  into the release repository instead of rebuilt from CRAN source. This is used
+  for the graph stack required by `pixelatorR`.
 - `webr-packages/packages.pixi-full` records the R dependencies from the source
   Pixi feature for traceability. Some of those packages have native system
   dependencies and may not compile cleanly for webR without extra patching.
 - `webr-packages/packages.graph-experimental` records the older isolated graph
-  stack build attempt. The default manifest now includes the graph stack because
-  it is required by `pixelatorR`.
+  stack build attempt. The default release now copies the graph stack from the
+  official webR binary repo because it is required by `pixelatorR`.
 
 To attempt a fuller build, run the workflow manually with:
 

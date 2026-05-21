@@ -1,0 +1,7 @@
+# Official webR binary packages copied from https://repo.r-wasm.org.
+# Keep one package name per line.
+
+ggraph
+graphlayouts
+igraph
+tidygraph

@@ -65,6 +65,7 @@ jobs:
           echo "package_file=$INPUT_PACKAGE_FILE" >> "$GITHUB_OUTPUT"
           echo "release_tag=pixelgen-report-webr-r-env-$version" >> "$GITHUB_OUTPUT"
           echo "package_archive=pixelgen-report-webr-packages-$version.zip" >> "$GITHUB_OUTPUT"
+          echo "upstream_binary_file=webr-packages/upstream-binaries" >> "$GITHUB_OUTPUT"
           echo "library_stem=pixelgen-report-webr-library-$version" >> "$GITHUB_OUTPUT"
           echo "html_file=pixelgen-r-console-$version.html" >> "$GITHUB_OUTPUT"
 
@@ -113,7 +114,7 @@ jobs:
               '  }, character(1))\n'
               '  message("Using patched package refs: ", paste(names(patched_refs), collapse = ", "))\n'
               '}\n'
-              'rwasm::add_pkg(packages, repo_dir = repo_path, remotes = NULL, compress = compress)'
+              'rwasm::add_pkg(packages, repo_dir = repo_path, remotes = NA, compress = compress)'
           )
           if old not in text:
               raise SystemExit("Expected rwasm::add_pkg() call was not found")
@@ -158,6 +159,9 @@ jobs:
           printf 'pkgs=%s\n' "$pkgs" >> "$GITHUB_OUTPUT"
           mkdir -p _release_assets
           cp "$PACKAGE_FILE" "_release_assets/pixelgen-report-webr-packages-${{ steps.settings.outputs.version }}.txt"
+          if [[ -f "${{ steps.settings.outputs.upstream_binary_file }}" ]]; then
+            cp "${{ steps.settings.outputs.upstream_binary_file }}" "_release_assets/pixelgen-report-webr-upstream-binaries-${{ steps.settings.outputs.version }}.txt"
+          fi
 
       - name: Build versioned webR package repo
         uses: ./.actions/build-rwasm
@@ -166,6 +170,53 @@ jobs:
           repo-path: _webr_repo/${{ steps.settings.outputs.version }}
           webr-image: ghcr.io/r-wasm/webr:v0.5.9
           compress: false
+
+      - name: Add upstream webR binaries
+        shell: bash
+        env:
+          VERSION: ${{ steps.settings.outputs.version }}
+          UPSTREAM_BINARY_FILE: ${{ steps.settings.outputs.upstream_binary_file }}
+          UPSTREAM_REPO: https://repo.r-wasm.org/bin/emscripten/contrib/4.5
+        run: |
+          set -euo pipefail
+          if [[ ! -f "$UPSTREAM_BINARY_FILE" ]]; then
+            echo "No upstream binary package file found at $UPSTREAM_BINARY_FILE; skipping."
+            exit 0
+          fi
+          package_dir="_webr_repo/$VERSION/bin/emscripten/contrib/4.5"
+          mkdir -p "$package_dir"
+          tmp_index="$(mktemp)"
+          curl -fsSL "$UPSTREAM_REPO/PACKAGES" -o "$tmp_index"
+          mapfile -t packages < <(
+            awk '
+              {
+                gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
+                if ($0 == "" || substr($0, 1, 1) == "#") next
+                if (!seen[$0]++) print $0
+              }
+            ' "$UPSTREAM_BINARY_FILE"
+          )
+          for package in "${packages[@]}"; do
+            version="$(
+              awk -v package="$package" '
+                /^Package: / { active = ($2 == package) }
+                active && /^Version: / { print $2; exit }
+              ' "$tmp_index"
+            )"
+            if [[ -z "$version" ]]; then
+              echo "Upstream webR package not found: $package" >&2
+              exit 1
+            fi
+            target="$package_dir/${package}_${version}.tgz"
+            curl -fsSL "$UPSTREAM_REPO/${package}_${version}.tgz" -o "$target"
+            echo "Added upstream webR binary: ${package}_${version}.tgz"
+          done
+          docker run --rm \
+            -e PACKAGE_DIR="$package_dir" \
+            -v "$PWD:/work" \
+            -w /work \
+            ghcr.io/r-wasm/webr:v0.5.9 \
+            Rscript --vanilla -e 'tools::write_PACKAGES(Sys.getenv("PACKAGE_DIR"), verbose = TRUE, type = "mac.binary")'
 
       - name: Fix generated package permissions
         shell: bash
@@ -205,7 +256,7 @@ jobs:
             exit 1
           fi
           mapfile -t expected < <(
-            awk '
+            cat "$PACKAGE_FILE" "${{ steps.settings.outputs.upstream_binary_file }}" 2>/dev/null | awk '
               {
                 gsub(/^[[:space:]]+|[[:space:]]+$/, "", $0)
                 if ($0 == "" || substr($0, 1, 1) == "#") next
@@ -214,7 +265,7 @@ jobs:
                 sub("^.*/", "", $0)
                 if (!seen[$0]++) print $0
               }
-            ' "$PACKAGE_FILE"
+            '
           )
           mapfile -t available < <(awk '/^Package:/ { print $2 }' "$package_index" | sort -u)
           missing=()
@@ -271,7 +322,7 @@ jobs:
             -v "$PWD:/work" \
             -w /work \
             ghcr.io/r-wasm/webr:v0.5.9 \
-            Rscript -e '
+            Rscript --vanilla -e '
               if (!requireNamespace("pak", quietly = TRUE)) {
                 install.packages("pak", repos = "https://cloud.r-project.org")
               }

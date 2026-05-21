@@ -7,7 +7,6 @@
 # dependency resolution while mounting the library bundle in a browser.
 
 cran::askpass
-cran::arrow
 cran::assertthat
 cran::base64enc
 bioc::BiocGenerics
@@ -52,11 +51,9 @@ cran::ggforce
 cran::ggplot2
 cran::ggrepel
 cran::ggridges
-cran::ggraph
 cran::GlobalOptions
 cran::globals
 cran::glue
-cran::graphlayouts
 cran::gtable
 cran::harmony
 cran::here
@@ -67,7 +64,6 @@ cran::hms
 cran::htmltools
 cran::htmlwidgets
 cran::httr
-cran::igraph
 bioc::IRanges
 cran::isoband
 cran::iterators
@@ -132,7 +128,6 @@ cran::sys
 cran::systemfonts
 cran::tibble
 cran::tidyr
-cran::tidygraph
 cran::tidyselect
 cran::tinytex
 cran::tweenr
