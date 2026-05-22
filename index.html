@@ -580,25 +580,28 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
       try {
         let targetDirectory = await prepareDataDirectory(DEFAULT_DATA_DIRECTORY);
         const seen = new Map();
-        const packages = selected.map((file) => {
+        const mountedFiles = [];
+        const metadataFiles = [];
+        const blobParts = [];
+        let offset = 0;
+        selected.forEach((file) => {
           const name = uniqueFileName(safeDataFileName(file.name || "file"), seen);
-          return {
-            name,
-            blob: file,
-            metadata: {
-              files: [{
-                filename: `/${name}`,
-                start: 0,
-                end: file.size,
-              }],
-            },
-          };
+          const start = offset;
+          const end = start + file.size;
+          mountedFiles.push({ name, size: file.size });
+          metadataFiles.push({ filename: `/${name}`, start, end });
+          blobParts.push(file);
+          offset = end;
         });
+        const localFilePackage = {
+          blob: new Blob(blobParts, { type: "application/octet-stream" }),
+          metadata: { files: metadataFiles },
+        };
         try {
-          await mountLocalFilePackages(targetDirectory, packages);
+          await mountLocalFilePackage(targetDirectory, localFilePackage);
         } catch (error) {
           targetDirectory = await prepareDataDirectory(`/home/web_user/pixelgen-data-${Date.now()}`);
-          await mountLocalFilePackages(targetDirectory, packages);
+          await mountLocalFilePackage(targetDirectory, localFilePackage);
         }
         dataDirectory = targetDirectory;
         await exposeDataDirectory(dataDirectory);
@@ -607,7 +610,7 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
         const warning = largeFiles.length
           ? ` Large files (${largeFiles.map((file) => `${file.name}: ${formatBytes(file.size)}`).join(", ")}) can still exceed browser memory when R reads them.`
           : "";
-        setStatus("Files mounted", `Mounted ${packages.map((pkg) => pkg.name).join(", ")} at ${dataDirectory}. Use pixelgen_data_dir in R.${warning}`, "ok");
+        setStatus("Files mounted", `Mounted ${mountedFiles.map((file) => file.name).join(", ")} at ${dataDirectory}. Use pixelgen_data_dir in R.${warning}`, "ok");
       } finally {
         elements.dataFiles.value = "";
         setBusy(false);
@@ -818,17 +821,17 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
       return path;
     }
 
-    async function mountLocalFilePackages(path, packages) {
+    async function mountLocalFilePackage(path, localFilePackage) {
       try {
         await webR.FS.unmount(path);
       } catch (_) {
         // It is fine when the directory has not been mounted before.
       }
       await webR.FS.mount("WORKERFS", {
-        packages: packages.map((pkg) => ({
-          blob: pkg.blob,
-          metadata: pkg.metadata,
-        })),
+        packages: [{
+          blob: localFilePackage.blob,
+          metadata: localFilePackage.metadata,
+        }],
       }, path);
     }
 
