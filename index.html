@@ -390,7 +390,7 @@ plotly</textarea>
           <span class="pill">canvas plots</span>
         </div>
 
-        <p class="small">Use the release ZIP or the `.data.gz` plus `.js.metadata` pair built by the release workflow. Local files mount read-only at `pixelgen_data_dir`.</p>
+        <p class="small">For the fastest package load, select the release `.data.gz` and `.js.metadata` files together. The ZIP contains the same bundle but may mount more slowly. Local files mount read-only at `pixelgen_data_dir`.</p>
       </div>
     </aside>
 
@@ -529,7 +529,7 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
       if (!elements.packageRepo.value.trim()) {
         setStatus(
           "Use bundle",
-          "Click Mount bundle and choose pixelgen-report-webr-library-v0.1.0.zip. The package repo ZIP is not a mountable library bundle.",
+          "Click Mount bundle and choose pixelgen-report-webr-library-v0.1.0.data.gz plus pixelgen-report-webr-library-v0.1.0.js.metadata. The package repo ZIP is not a mountable library bundle.",
           "warn",
         );
         return;
@@ -697,7 +697,7 @@ ggplot(df, aes(marker, proximity, fill = marker)) +
           stop(
             "Packages are not in the current webR library: ",
             paste(missing, collapse = ", "),
-            ". Click Mount bundle and choose pixelgen-report-webr-library-v0.1.0.zip."
+            ". Click Mount bundle and choose pixelgen-report-webr-library-v0.1.0.data.gz plus pixelgen-report-webr-library-v0.1.0.js.metadata."
           )
         }
         invisible(lapply(requested, library, character.only = TRUE))

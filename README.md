@@ -50,8 +50,10 @@ Release downloads include:
 - `pixelgen-report-webr-library-v0.1.0.js.metadata`
 - `pixelgen-report-webr-packages-v0.1.0.txt`
 
-Use the library ZIP in the HTML page's "Mount bundle" control to load the
-compiled packages without reinstalling during that browser session.
+In the HTML page's "Mount bundle" control, choose both the `.data.gz` and
+`.js.metadata` library files for the fastest mount. The library ZIP contains the
+same files and is convenient for download, but large ZIP parsing can be slower
+inside the browser.
 
 To read local analysis files in the browser, click "Mount local files" and
 choose the files. They are mounted read-only into the webR session and the path

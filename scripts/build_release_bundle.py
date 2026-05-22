@@ -89,12 +89,12 @@ WebAssembly R package repository and webR library bundle for GitHub Releases.
 Open:
   pixelgen-r-console-{VERSION}.html
 
-After the workflow has created a release, download and mount:
-  pixelgen-report-webr-library-{VERSION}.zip
-
-or mount both:
+After the workflow has created a release, download and mount both:
   pixelgen-report-webr-library-{VERSION}.data.gz
   pixelgen-report-webr-library-{VERSION}.js.metadata
+
+The ZIP contains the same files and is convenient for archive/download:
+  pixelgen-report-webr-library-{VERSION}.zip
 """,
         encoding="utf-8",
     )

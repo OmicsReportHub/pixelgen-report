@@ -14,18 +14,18 @@ GitHub Pages package snapshot:
 6. Upload the HTML page, package ZIP, and library bundle files to a GitHub
    Release.
 
-The library bundle is the most convenient file for interactive browser use. In
-`index.html`, use **Mount bundle** and choose:
-
-```text
-pixelgen-report-webr-library-v0.1.0.zip
-```
-
-or choose both:
+The split library bundle is the fastest path for interactive browser use. In
+`index.html`, use **Mount bundle** and choose both:
 
 ```text
 pixelgen-report-webr-library-v0.1.0.data.gz
 pixelgen-report-webr-library-v0.1.0.js.metadata
+```
+
+The ZIP contains the same two files and is useful for download/archive:
+
+```text
+pixelgen-report-webr-library-v0.1.0.zip
 ```
 
 The mounted library is session-scoped browser state. Mount it again after a
